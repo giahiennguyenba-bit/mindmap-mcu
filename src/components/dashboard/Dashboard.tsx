@@ -574,7 +574,7 @@ function ChatPanel({
                   ${isRecording ? "text-[#FF2D55] placeholder:text-[#FF2D55]/60 font-medium" : "text-white/90 placeholder:text-white/20"}`}
               />
               <button
-                onClick={sendMessage}
+                onClick={() => sendMessage()}
                 disabled={!input.trim()}
                 aria-label="Send message"
                 className={`flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-300
@@ -716,7 +716,7 @@ export default function Dashboard() {
 
   const getAudioLevels = useCallback(() => {
     if (analyserRef.current && dataArrayRef.current) {
-      analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+      analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
       const low = dataArrayRef.current.slice(0, 10).reduce((a, b) => a + b, 0) / 10 / 255;
       const mid = dataArrayRef.current.slice(10, 20).reduce((a, b) => a + b, 0) / 10 / 255;
       const high = dataArrayRef.current.slice(20, 30).reduce((a, b) => a + b, 0) / 10 / 255;

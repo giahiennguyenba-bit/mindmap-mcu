@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    outputFileTracingIncludes: {
-      '/api/chat': ['./.context/mindy_protocol.md'],
-    },
+  outputFileTracingIncludes: {
+    '/api/chat': ['./.context/mindy_protocol.md'],
   },
 };
 

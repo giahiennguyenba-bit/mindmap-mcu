@@ -41,7 +41,7 @@ const OrganicMaterial = shaderMaterial(
   sphereVertexShader,
   sphereFragmentShader,
   (material) => {
-    material.defines = { USE_TANGENT: "" };
+    if (material) material.defines = { USE_TANGENT: "" };
   }
 );
 

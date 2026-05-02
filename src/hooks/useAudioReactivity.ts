@@ -35,7 +35,7 @@ export function useAudioReactivity() {
   const updateLevels = () => {
     if (!analyserRef.current || !dataArrayRef.current) return levelsRef.current;
     
-    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
     
     // Split into 3 bands: Low, Mid, High
     const length = dataArrayRef.current.length;
