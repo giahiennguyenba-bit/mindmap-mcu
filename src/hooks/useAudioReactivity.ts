@@ -60,5 +60,13 @@ export function useAudioReactivity() {
     return levelsRef.current;
   };
 
-  return { isReady, startListening, updateLevels, error };
+  const stopListening = () => {
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setIsReady(false);
+  };
+
+  return { isReady, startListening, stopListening, updateLevels, error };
 }

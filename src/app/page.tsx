@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
   const router = useRouter();
-  const { isReady, startListening, updateLevels, error } = useAudioReactivity();
+  const { isReady, startListening, stopListening, updateLevels, error } = useAudioReactivity();
   const { user, loading, signInWithGoogle } = useAuth();
   
   useEffect(() => {
@@ -123,103 +123,105 @@ export default function Home() {
   }, []);
 
 
+  // ── Auto-start Microphone Reactivity ──
+  useEffect(() => {
+    // Start listening automatically after 2 seconds
+    const timer = setTimeout(() => {
+      startListening();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []); // Run once on mount
+
   return (
-    <main className="min-h-screen h-screen bg-[#080808] text-foreground flex flex-col lg:flex-row w-full overflow-hidden selection:bg-primary selection:text-white font-sans">
-
+    <main className="relative min-h-[100dvh] lg:h-screen bg-[#080808] text-foreground w-full overflow-hidden font-sans selection:bg-primary flex flex-col lg:flex-row selection:text-white">
+      
       {/* LEFT: Typography & Controls */}
-      <section className="flex-1 lg:flex-[0.6] flex flex-col justify-between p-6 md:p-12 lg:p-16 relative z-10">
-
-        {/* opacity:0 initial state prevents flash before GSAP runs */}
-        <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="flex justify-between items-start gap-4">
-          <div>
-            <h2 className="font-mono text-xs md:text-sm tracking-[0.3em] text-white/50 uppercase">Project</h2>
-            <div className="text-lg md:text-xl font-bold tracking-widest mt-1 flex items-center gap-2 uppercase">
-              MindMap <span className="text-primary">MCU</span>
-            </div>
+      <section className="flex-1 lg:flex-[0.6] flex flex-col justify-between p-6 md:p-12 lg:p-20 relative z-10 items-start text-left">
+        
+        {/* TOP: PROJECT IDENTITY */}
+        <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="z-10 pt-4 lg:pt-0">
+          <h2 className="font-mono text-[10px] md:text-xs tracking-[0.5em] text-white/40 uppercase mb-1">Project</h2>
+          <div className="text-xl md:text-2xl font-bold tracking-[0.2em] uppercase flex items-center gap-3">
+            MINDMAP <span className="text-primary">MCU</span>
           </div>
         </header>
 
-        <div className="my-16 lg:my-20">
-          <h1 className="font-heading text-[3.5rem] leading-[0.9] md:text-[6rem] lg:text-[7rem] xl:text-[8rem] font-black tracking-tighter uppercase break-words">
-            <div ref={word1Ref} style={{ opacity: 0, transform: 'translateX(-60px)' }} className="inline-block">Organic</div> <br />
-            <div ref={word2Ref} style={{ opacity: 0, transform: 'translateX(-60px)' }} className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary to-[#ff7b00]">Intelligence.</div>
+        {/* MIDDLE: HEADLINE & CONTENT */}
+        <div className="flex-1 flex flex-col items-start justify-center my-10 lg:my-20">
+          <h1 className="font-heading text-[12vw] md:text-[6rem] lg:text-[7rem] xl:text-[8rem] font-black leading-[1.1] md:leading-[0.9] tracking-tighter uppercase -ml-1 md:-ml-2">
+            <div ref={word1Ref} style={{ opacity: 0, transform: 'translateY(20px)' }}>Organic</div>
+            <div ref={word2Ref} style={{ opacity: 0, transform: 'translateY(20px)' }} className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D55] via-[#FF6B00] to-[#FF8C00]">
+              Intelligence.
+            </div>
           </h1>
 
-          <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-8 min-h-[3.5rem] md:min-h-[4rem] max-w-md">
-            <p className="text-sm md:text-base lg:text-lg text-white/60 font-mono leading-relaxed relative inline-block
-              after:content-[''] after:inline-block after:w-2 after:h-[1em]
-              after:bg-[#FF2D55] after:ml-2 after:-mb-0.5
-              after:animate-[blink_1s_infinite] after:align-baseline">
+          <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-8 mb-10 lg:mb-0 max-w-[280px] md:max-w-md lg:max-w-xl">
+            <p className="text-[11px] md:text-base lg:text-lg font-mono text-white/50 leading-relaxed normal-case">
               {displayText}
+              <span className="inline-block w-1.5 h-3 bg-primary ml-1 animate-pulse" />
             </p>
           </div>
 
-          <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-8">
+          <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-12 lg:mt-24">
             <button
               onClick={user ? () => router.push('/onboarding') : signInWithGoogle}
               disabled={loading}
-              className="inline-flex items-center justify-center border-2 border-[#FF2D55] bg-transparent
-                text-white tracking-[0.2em] text-[0.85rem] px-8 py-3 font-bold uppercase cursor-pointer
-                transition-all duration-300 disabled:opacity-50 disabled:cursor-wait
-                hover:bg-gradient-to-r hover:from-[#FF2D55] hover:to-[#FF6B00]
-                hover:border-transparent hover:shadow-[0_0_20px_rgba(255,45,85,0.5)]"
+              className="border-2 border-[#FF2D55] bg-transparent text-white tracking-[0.3em] text-[10px] md:text-xs px-10 py-4 font-bold uppercase transition-all duration-300 hover:bg-[#FF2D55] hover:shadow-[0_0_30px_rgba(255,45,85,0.4)]"
             >
               {loading ? "Connecting..." : "Speak to the core"}
             </button>
           </div>
         </div>
 
-        {/* Status / Mic */}
-        <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="flex items-center gap-4">
+        {/* BOTTOM: Status / Mic */}
+        <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="flex items-center gap-6 mt-8">
           <Button
             size="lg"
-            onClick={!isReady && !error ? startListening : undefined}
-            className="rounded-none w-14 h-14 md:w-16 md:h-16 bg-primary text-white
-              hover:bg-white hover:text-black transition-colors
-              shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)]
-              hover:shadow-none hover:translate-y-2 hover:translate-x-2"
+            onClick={isReady ? stopListening : startListening}
+            className={cn(
+              "rounded-none w-14 h-14 transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none",
+              isReady ? "bg-primary text-white" : "bg-white/10 text-white/40 border border-white/10"
+            )}
           >
-            <Mic className="w-5 h-5 md:w-6 md:h-6" />
+            <Mic className={cn("w-5 h-5", !isReady && "opacity-50")} />
           </Button>
-          <div className="font-mono text-[9px] md:text-[10px] text-white/40 uppercase tracking-widest space-y-1.5">
-            <p>
-              Status:{" "}
-              <span className={cn(
-                "text-primary transition-opacity duration-300",
-                statusFade ? "opacity-100" : "opacity-0"
-              )}>
-                {statusTexts[statusIndex]}
-              </span>
-            </p>
-            <div className="flex items-center gap-1.5">
-              <span>Core Temp:</span>
-              <div className="w-[5px] h-[5px] rounded-full bg-[#00FF85] animate-[pulseGreen_2s_infinite]" />
-              <span>NOMINAL</span>
-            </div>
+          <div className="font-mono text-[10px] text-white/30 uppercase tracking-[0.2em] space-y-1">
+            <p>Status: <span className="text-primary">{isReady ? "CORE ACTIVE" : "INTERFACE MUTED"}</span></p>
+            <p>Neural Link: <span className={cn(isReady ? "text-[#00FF85]" : "text-white/20")}>Nominal</span></p>
           </div>
         </div>
       </section>
 
-      {/* RIGHT: Sphere */}
-      <section className="flex-1 lg:flex-[0.4] relative flex items-center justify-center min-h-[50vh] lg:min-h-screen overflow-visible pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] md:w-[800px] xl:w-[1000px] aspect-square flex items-center justify-center z-0 pointer-events-auto">
-          <div ref={sphereRef} style={{ opacity: 0, transform: 'scale(0.9)' }} className="relative w-full h-full flex items-center justify-center">
-            <div className="scanlines-radial absolute inset-0 z-0" />
-            <div
-              className="absolute inset-0 animate-[pulseGlow_3s_ease-in-out_infinite] z-0"
-              style={{ background: 'radial-gradient(circle, rgba(255,45,85,0.2) 0%, rgba(255,107,0,0.05) 40%, transparent 60%)' }}
-            />
-            <div
-              className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto overflow-visible cursor-pointer"
-              onClick={!isReady && !error ? startListening : undefined}
-            >
-              <OrganicSphereWrapper isListening={isReady} audioLevels={updateLevels} colorMode="vibrant" />
-            </div>
+      {/* RIGHT: THE CORE (SPHERE) */}
+      <section 
+        className="flex-1 lg:flex-[0.4] relative flex items-center justify-center min-h-[45dvh] lg:min-h-screen z-0 overflow-visible -mt-10 lg:mt-0"
+      >
+        <div 
+          ref={sphereRef}
+          style={{ 
+            opacity: 0, 
+            scale: 0.8,
+            width: "clamp(330px, 46vw, 750px)",
+            height: "clamp(330px, 46vw, 750px)"
+          }}
+          className="relative aspect-square flex items-center justify-center"
+        >
+          {/* Ambient Glow */}
+          <div className="absolute inset-0 rounded-full opacity-20 blur-3xl animate-[pulseGlow_5s_ease-in-out_infinite]"
+               style={{ background: 'radial-gradient(circle, #FF2D55 0%, transparent 70%)' }} />
+          
+          {/* 3D Canvas Layer */}
+          <div className="absolute inset-0 z-10 pointer-events-auto cursor-default">
+            <OrganicSphereWrapper isListening={isReady} audioLevels={updateLevels} colorMode="vibrant" />
+          </div>
+
+          {/* Decoration Layer */}
+          <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+            <div className="scanlines-radial absolute inset-0 opacity-10" />
           </div>
         </div>
-        {/* Ambient bleed */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-primary/10 rounded-full blur-[80px] md:blur-[120px] opacity-30 mix-blend-screen pointer-events-none" />
       </section>
+
     </main>
   );
 }

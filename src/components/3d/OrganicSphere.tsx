@@ -351,7 +351,7 @@ export default function OrganicSphere({
     >
       {/* Use same Camera config as Bruno Simon for correct scale, zoomed out 10% */}
       <Canvas
-        camera={{ position: [0, 0, 6.6], fov: 25 }}
+        camera={{ position: [0, 0, 6.8], fov: 25 }}
         gl={{ antialias: true, alpha: true }}
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
