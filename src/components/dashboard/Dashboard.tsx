@@ -19,6 +19,20 @@ import {
 } from "lucide-react";
 import OrganicSphereWrapper from "@/components/3d/OrganicSphereWrapper";
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { 
+  collection, 
+  addDoc, 
+  doc, 
+  getDoc, 
+  setDoc,
+  serverTimestamp, 
+  query, 
+  orderBy, 
+  limit, 
+  getDocs 
+} from "firebase/firestore";
 
 /* ═══════════════════════════════════════════
    Types
@@ -91,7 +105,7 @@ const SIDEBAR_ITEMS = [
 ] as const;
 
 function Sidebar({ isVoiceMuted, toggleMute }: { isVoiceMuted: boolean, toggleMute: () => void }) {
-  const router = useRouter();
+  const { signOut } = useAuth();
   const [active, setActive] = useState("dashboard");
 
   return (
@@ -147,7 +161,7 @@ function Sidebar({ isVoiceMuted, toggleMute }: { isVoiceMuted: boolean, toggleMu
 
         {/* Logout */}
         <button
-          onClick={() => router.push("/")}
+          onClick={signOut}
           aria-label="Log out"
           className="group relative flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer hover:bg-white/[0.06] transition-all duration-300"
         >
@@ -188,6 +202,7 @@ interface ChatPanelProps {
   isCallMode: boolean;
   startCall: () => void;
   endCall: () => void;
+  onFocusChange?: (isFocused: boolean) => void;
 }
 
 function ChatPanel({ 
@@ -197,14 +212,59 @@ function ChatPanel({
   isVoiceMuted,
   isCallMode,
   startCall,
-  endCall 
+  endCall,
+  onFocusChange
 }: ChatPanelProps) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognition = useRef<any>(null);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/");
+    }
+  }, [user, loading, router]);
+
+  // Fetch initial profile/mood from Firestore
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.lastSphereState) {
+            onMindyStateUpdate(data.lastSphereState);
+          }
+          // Optionally load last few messages
+          const q = query(
+            collection(db, "users", user.uid, "messages"),
+            orderBy("timestamp", "asc"),
+            limit(50)
+          );
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const history = querySnapshot.docs.map(d => ({
+              id: d.id,
+              ...d.data(),
+              timestamp: d.data().timestamp?.toDate() || new Date()
+            })) as ChatMessage[];
+            setMessages(history);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching profile/history:", err);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -309,6 +369,22 @@ function ChatPanel({
     onTypingChange(val.length > 0);
   };
 
+  const handleFocus = () => {
+    setIsFocused(true);
+    onFocusChange?.(true);
+    // Auto-scroll on focus
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, 300);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onFocusChange?.(false);
+  };
+
   const sendMessage = useCallback(async (overrideText?: string) => {
     const textToSend = typeof overrideText === 'string' ? overrideText : input;
     const trimmed = textToSend.trim();
@@ -324,6 +400,15 @@ function ChatPanel({
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     onTypingChange(false);
+
+    // Save User message to Firestore
+    if (user) {
+      addDoc(collection(db, "users", user.uid, "messages"), {
+        role: "user",
+        content: trimmed,
+        timestamp: serverTimestamp()
+      });
+    }
 
     // AI "thinking" indicator
     const thinkingId = `ai-${Date.now()}`;
@@ -347,7 +432,11 @@ function ChatPanel({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, history })
+        body: JSON.stringify({ 
+          message: trimmed, 
+          history,
+          userName: user?.displayName 
+        })
       });
       
       const data = await res.json();
@@ -364,6 +453,25 @@ function ChatPanel({
 
       // Gửi metadata lên Dashboard để cập nhật Sphere
       onMindyStateUpdate(metadata);
+
+      // Save AI message to Firestore
+      if (user) {
+        addDoc(collection(db, "users", user.uid, "messages"), {
+          role: "ai",
+          content: cleanMessage,
+          timestamp: serverTimestamp()
+        });
+        
+        // Update user's last mood/state
+        setDoc(doc(db, "users", user.uid), {
+          lastSphereState: {
+            stressLevel: metadata?.stressScore ?? 0.3,
+            energyLevel: metadata?.energyLevel ?? 0.5,
+            moodColor: metadata?.sentimentColor ?? "#ffffff"
+          },
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
 
       // Mindy Voice Output
       if (!isVoiceMuted && cleanMessage) {
@@ -415,7 +523,7 @@ function ChatPanel({
         content: "Mindy đang bận cập nhật hệ thần kinh, vui lòng kiểm tra lại API Key hoặc kết nối mạng."
       } : m));
     }
-  }, [input, messages, onTypingChange, onMindyStateUpdate]);
+  }, [input, messages, onTypingChange, onMindyStateUpdate, user]);
 
   useEffect(() => {
     sendMessageRef.current = sendMessage;
@@ -439,6 +547,7 @@ function ChatPanel({
     }
   };
 
+
   return (
     <div className="w-full h-full relative overflow-hidden px-4 pb-4 pt-0 lg:p-5 lg:pl-0">
       {/* ── Glassmorphic Floating Container ── */}
@@ -454,11 +563,20 @@ function ChatPanel({
       >
         {/* Chat Header */}
         <header className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.07] bg-black/10 backdrop-blur-md z-10">
-          <div>
-            <h2 className="text-sm font-semibold text-white/90 tracking-wide">
-              AI Assistant
-              <span className="text-white/30 font-normal ml-2">— Neural Interface</span>
-            </h2>
+          <div className="flex items-center gap-3">
+            {user?.photoURL && (
+              <img 
+                src={user.photoURL} 
+                alt={user.displayName || "Avatar"} 
+                className="w-8 h-8 rounded-full border border-white/20"
+              />
+            )}
+            <div>
+              <h2 className="text-sm font-semibold text-white/90 tracking-wide">
+                {user?.displayName ? `Welcome Back, ${user.displayName.split(' ')[0]}` : 'Welcome Back'}
+                <span className="text-white/30 font-normal ml-2 hidden md:inline">— Neural Interface</span>
+              </h2>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <DigitalClock />
@@ -523,9 +641,9 @@ function ChatPanel({
         </div>
 
         {/* Input & Dock Wrapper (Sticky/Fixed logic) */}
-        <div className="shrink-0 bg-black/20 backdrop-blur-xl border-t border-white/[0.07]"
+        <div className="shrink-0 bg-black/40 backdrop-blur-2xl border-t border-white/[0.07] sticky bottom-0 z-20"
              style={{
-               paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)"
+               paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)"
              }}
         >
           {/* Input Bar */}
@@ -567,8 +685,8 @@ function ChatPanel({
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 placeholder={isRecording ? "Mindy is listening..." : "Type your command..."}
                 className={`flex-1 bg-transparent border-none text-sm font-sans focus:outline-none focus:ring-0
                   ${isRecording ? "text-[#FF2D55] placeholder:text-[#FF2D55]/60 font-medium" : "text-white/90 placeholder:text-white/20"}`}
@@ -702,6 +820,7 @@ function CorePanel({ isTyping, isSpeaking, stressLevel, energyLevel, moodColor, 
    ═══════════════════════════════════════════ */
 export default function Dashboard() {
   const [isTyping, setIsTyping] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const [stressLevel, setStressLevel] = useState(0.3);
@@ -758,7 +877,7 @@ export default function Dashboard() {
 
   return (
     <motion.main
-      className="h-screen w-screen overflow-hidden bg-[#080808] flex font-sans"
+      className="h-[100dvh] w-screen overflow-hidden bg-[#080808] flex font-sans"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
@@ -774,7 +893,9 @@ export default function Dashboard() {
         <div className={
           isCallMode
           ? "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-3xl"
-          : "h-[35vh] lg:h-full shrink-0 relative"
+          : `h-[35vh] lg:h-full shrink-0 relative transition-all duration-500 ease-in-out ${
+              isInputFocused ? "h-[15vh] -translate-y-2 scale-90" : "h-[35vh]"
+            }`
         }>
           <div className={
             isCallMode
@@ -812,6 +933,7 @@ export default function Dashboard() {
         <div className="flex-1 min-h-0 relative">
           <ChatPanel 
             onTypingChange={setIsTyping} 
+            onFocusChange={setIsInputFocused}
             onSpeakingChange={setIsSpeaking}
             isVoiceMuted={isVoiceMuted}
             isCallMode={isCallMode}

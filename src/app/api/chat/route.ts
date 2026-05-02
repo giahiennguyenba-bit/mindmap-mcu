@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   console.log("Using API Key:", process.env.GEMINI_API_KEY?.slice(0, 5) + "...");
   try {
     const body = await req.json();
-    const { message, history } = body;
+    const { message, history, userName } = body;
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -21,9 +21,11 @@ export async function POST(req: Request) {
     if (fs.existsSync(protocolPath)) {
       systemInstruction = fs.readFileSync(protocolPath, "utf-8");
     } else {
-      console.warn("mindy_protocol.md not found, using default instruction.");
       systemInstruction = "You are Mindy. Always end response with JSON block wrapped in $$$ containing stressScore.";
     }
+
+    // Inject User Context
+    systemInstruction += `\nBạn đang trò chuyện với ${userName || 'người dùng'}. Hãy thỉnh thoảng gọi tên họ một cách tự nhiên và ấm áp để tăng sự gắn kết.`;
 
     // Khởi tạo thư viện bằng API Key lấy trực tiếp
     const apiKey = process.env.GEMINI_API_KEY || "";

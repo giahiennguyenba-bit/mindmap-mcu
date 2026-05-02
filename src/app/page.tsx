@@ -9,10 +9,18 @@ import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useAudioReactivity } from "@/hooks/useAudioReactivity";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
   const router = useRouter();
   const { isReady, startListening, updateLevels, error } = useAudioReactivity();
+  const { user, loading, signInWithGoogle } = useAuth();
+  
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/onboarding');
+    }
+  }, [user, loading, router]);
 
   // ── Landing Typewriter ──
   const TYPEWRITER_TEXTS = [
@@ -148,14 +156,15 @@ export default function Home() {
 
           <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-8">
             <button
-              onClick={() => router.push('/onboarding')}
+              onClick={user ? () => router.push('/onboarding') : signInWithGoogle}
+              disabled={loading}
               className="inline-flex items-center justify-center border-2 border-[#FF2D55] bg-transparent
                 text-white tracking-[0.2em] text-[0.85rem] px-8 py-3 font-bold uppercase cursor-pointer
-                transition-all duration-300
+                transition-all duration-300 disabled:opacity-50 disabled:cursor-wait
                 hover:bg-gradient-to-r hover:from-[#FF2D55] hover:to-[#FF6B00]
                 hover:border-transparent hover:shadow-[0_0_20px_rgba(255,45,85,0.5)]"
             >
-              Speak to the core
+              {loading ? "Connecting..." : "Speak to the core"}
             </button>
           </div>
         </div>

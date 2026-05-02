@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import OrganicSphereWrapper from "@/components/3d/OrganicSphereWrapper";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const NARRATIVE_TEXT = "Welcome, student. I am Mindy—a reflection of your mental state and well-being. Let us embark on a journey of self-discovery.";
 
@@ -46,6 +49,7 @@ const ONBOARDING_QUESTIONS = [
 
 export default function OnboardingPhase() {
   const router = useRouter();
+  const { user } = useAuth();
   
   // 1. Core Onboarding State (0 to 4)
   const [step, setStep] = useState(0);
@@ -89,8 +93,25 @@ export default function OnboardingPhase() {
       setStep(prev => prev + 1);
       setSelectedOptionId(null);
     } else {
-      // Step 4 complete -> save to Firestore & navigate
-      console.log("Saving user data to Firestore...", userData);
+      handleFinishOnboarding();
+    }
+  };
+
+  const handleFinishOnboarding = async () => {
+    if (!user) return;
+
+    try {
+      await setDoc(doc(db, "users", user.uid), {
+        ...userData,
+        lastSphereState: sphereState,
+        onboardingCompleted: true,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      router.push('/dashboard');
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      // Still navigate as fallback
       router.push('/dashboard');
     }
   };
