@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/chat': ['./.context/mindy_protocol.md'],
+    },
+  },
 };
 
 export default nextConfig;

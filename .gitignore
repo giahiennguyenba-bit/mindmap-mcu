@@ -33,9 +33,20 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# vercel
+# vercel & firebase
 .vercel
+.firebase/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI Agents & Context
+.agents/
+.agent/
+.claude/
+.context/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+mindmap-mcu/.agent/
