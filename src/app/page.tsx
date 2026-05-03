@@ -15,6 +15,7 @@ export default function Home() {
   const router = useRouter();
   const { isReady, startListening, stopListening, updateLevels, error } = useAudioReactivity();
   const { user, loading, signInWithGoogle } = useAuth();
+  const [isSphereReady, setIsSphereReady] = useState(false);
   
   useEffect(() => {
     if (user && !loading) {
@@ -100,37 +101,33 @@ export default function Home() {
 
       // 5. Tagline — intentional 0.4s gap after headline finishes (breathing room)
       tl.to(taglineRef.current, { opacity: 1, y:  0, duration: 0.55, ease: "power3.out" }, 1.4);
-
-      // 6. CTA button
       tl.to(ctaRef.current,     { opacity: 1, y:  0, duration: 0.45, ease: "power3.out" }, 1.8);
-
-      // 7. Status bar — ambient, arrives last
       tl.to(statusRef.current,  { opacity: 1, y:  0, duration: 0.45, ease: "power3.out" }, 2.1);
 
-      // Gate behind window.load so fonts + WebGL canvas are fully ready
-      const startTimeline = () => {
-        requestAnimationFrame(() => requestAnimationFrame(() => tl.play()));
+      // Gate behind window.load AND WebGL readiness so everything is silky smooth
+      const checkAndStart = () => {
+        if (isSphereReady && document.readyState === 'complete') {
+          requestAnimationFrame(() => requestAnimationFrame(() => tl.play()));
+        }
       };
 
-      if (document.readyState === 'complete') {
-        startTimeline();
-      } else {
-        window.addEventListener('load', startTimeline, { once: true });
-      }
+      checkAndStart();
+      window.addEventListener('load', checkAndStart, { once: true });
     });
 
     return () => ctx.revert();
-  }, []);
+  }, [isSphereReady]);
 
 
   // ── Auto-start Microphone Reactivity ──
   useEffect(() => {
-    // Start listening automatically after 2 seconds
+    if (!isSphereReady) return;
+    // Start listening automatically after 2 seconds from sphere readiness
     const timer = setTimeout(() => {
       startListening();
     }, 2000);
     return () => clearTimeout(timer);
-  }, []); // Run once on mount
+  }, [isSphereReady, startListening]);
 
   return (
     <main className="relative min-h-[100dvh] lg:h-screen bg-[#080808] text-foreground w-full overflow-hidden font-sans selection:bg-primary flex flex-col lg:flex-row selection:text-white">
@@ -212,7 +209,12 @@ export default function Home() {
           
           {/* 3D Canvas Layer */}
           <div className="absolute inset-0 z-10 pointer-events-auto cursor-default">
-            <OrganicSphereWrapper isListening={isReady} audioLevels={updateLevels} colorMode="vibrant" />
+            <OrganicSphereWrapper 
+              isListening={isReady} 
+              audioLevels={updateLevels} 
+              colorMode="vibrant" 
+              onReady={() => setIsSphereReady(true)}
+            />
           </div>
 
           {/* Decoration Layer */}

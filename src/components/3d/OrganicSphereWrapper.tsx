@@ -17,6 +17,7 @@ export interface OrganicSphereWrapperProps {
   stressLevel?: number;
   energyLevel?: number;
   moodColor?: string;
+  onReady?: () => void;
 }
 
 export default function OrganicSphereWrapper({
@@ -28,6 +29,7 @@ export default function OrganicSphereWrapper({
   stressLevel = 0.3,
   energyLevel = 0.3,
   moodColor,
+  onReady,
 }: OrganicSphereWrapperProps) {
   return (
     <Suspense fallback={
@@ -44,6 +46,7 @@ export default function OrganicSphereWrapper({
         stressLevel={stressLevel}
         energyLevel={energyLevel}
         moodColor={moodColor}
+        onReady={onReady}
       />
     </Suspense>
   );
