@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   console.log("Using API Key:", process.env.GEMINI_API_KEY?.slice(0, 5) + "...");
   try {
     const body = await req.json();
-    const { message, history, userName } = body;
+    const { message, history, userName, calendarData } = body;
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -24,8 +24,30 @@ export async function POST(req: Request) {
       systemInstruction = "You are Mindy. Always end response with JSON block wrapped in $$$ containing stressScore.";
     }
 
-    // Inject User Context
+    // Lấy thời gian hiện tại theo múi giờ Đài Loan (Asia/Taipei)
+    const nowTaipei = new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei", dateStyle: "full", timeStyle: "long" });
+
+    // Inject User Context & Current Time
     systemInstruction += `\nBạn đang trò chuyện với ${userName || 'người dùng'}. Hãy thỉnh thoảng gọi tên họ một cách tự nhiên và ấm áp để tăng sự gắn kết.`;
+    systemInstruction += `\n[CRITICAL CONTEXT] Current Time in Taipei (MCU Timezone): ${nowTaipei}`;
+
+    // Tiền xử lý dữ liệu Google Calendar (nếu có)
+    let finalMessage = message;
+    if (calendarData && Array.isArray(calendarData) && calendarData.length > 0) {
+      const calendarContext = calendarData.map(event => {
+        const start = event.start?.dateTime || event.start?.date || "Unknown start";
+        const end = event.end?.dateTime || event.end?.date || "Unknown end";
+        const summary = event.summary || "Untitled Event";
+        return `- Event: ${summary}, Start: ${start}, End: ${end}`;
+      }).join('\n');
+
+      finalMessage = `
+User's Current Schedule:
+${calendarContext}
+
+User's Message: ${message}
+`;
+    }
 
     // Khởi tạo thư viện bằng API Key lấy trực tiếp
     const apiKey = process.env.GEMINI_API_KEY || "";
@@ -35,9 +57,9 @@ export async function POST(req: Request) {
     }
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
-    // Thiết lập model chuẩn mới nhất của Google (2026) là gemini-3-flash-preview
+    // Thiết lập model sử dụng gemini-2.5-flash-lite để tối ưu hoá token và tốc độ theo yêu cầu
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash-lite",
       config: {
         systemInstruction: systemInstruction,
       },
@@ -46,8 +68,8 @@ export async function POST(req: Request) {
       history: history || [],
     });
 
-    // Gửi tin nhắn
-    const response = await chat.sendMessage({ message: message });
+    // Gửi tin nhắn (đã bọc context lịch nếu có)
+    const response = await chat.sendMessage({ message: finalMessage });
     const text = response.text;
 
     // Trả về JSON thông thường (dễ dàng test qua Postman)
