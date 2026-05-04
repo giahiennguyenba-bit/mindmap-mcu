@@ -4,6 +4,8 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { 
   User, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged 
 } from "firebase/auth";
@@ -23,6 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Luôn kiểm tra kết quả redirect khi component mount
+    getRedirectResult(auth).catch((error) => {
+      if (error.code !== 'auth/redirect-cancelled-by-user') {
+        console.error("Redirect Error:", error);
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -33,11 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      setLoading(true);
+      // BƯỚC 1: Thử mở Popup TRƯỚC khi set loading để đảm bảo tính "tức thì" (tránh bị chặn)
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Lỗi đăng nhập Google:", error);
-      alert("Đã xảy ra lỗi khi đăng nhập (auth/popup-blocked). Vui lòng kiểm tra cài đặt trình duyệt để cho phép cửa sổ bật lên.");
+    } catch (error: any) {
+      // BƯỚC 2: Nếu vẫn bị chặn (auth/popup-blocked), tự động chuyển sang Redirect
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        console.warn("Popup blocked, falling back to Redirect mode...");
+        setLoading(true);
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        console.error("Login Error:", error);
+        alert("Đã xảy ra lỗi: " + error.message);
+      }
     } finally {
       setLoading(false);
     }
