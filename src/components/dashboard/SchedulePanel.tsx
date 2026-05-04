@@ -226,7 +226,7 @@ export default function SchedulePanel() {
     // Must be sorted by startTime to find gaps
     const sortedDayEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime));
     
-    const elements: JSX.Element[] = [];
+    const elements: any[] = [];
 
     sortedDayEvents.forEach((event, idx) => {
       const pos = calculatePosition(event.startTime, event.endTime);
