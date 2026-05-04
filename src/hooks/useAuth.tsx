@@ -3,7 +3,8 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { 
   User, 
-  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged 
 } from "firebase/auth";
@@ -23,6 +24,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Xử lý kết quả trả về sau khi redirect
+    getRedirectResult(auth).catch((error) => {
+      console.error("Lỗi sau khi chuyển hướng đăng nhập:", error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -34,9 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      await signInWithPopup(auth, googleProvider);
+      // Sử dụng Redirect thay vì Popup để tránh bị trình duyệt chặn
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error("Lỗi đăng nhập Google:", error);
+      alert("Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
