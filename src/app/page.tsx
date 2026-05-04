@@ -19,7 +19,7 @@ export default function Home() {
   
   useEffect(() => {
     if (user && !loading) {
-      router.push('/onboarding');
+      router.push('/dashboard');
     }
   }, [user, loading, router]);
 
@@ -161,7 +161,7 @@ export default function Home() {
 
           <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-12 lg:mt-24">
             <button
-              onClick={user ? () => router.push('/onboarding') : signInWithGoogle}
+              onClick={user ? () => router.push('/dashboard') : signInWithGoogle}
               disabled={loading}
               className="border-2 border-[#FF2D55] bg-transparent text-white tracking-[0.3em] text-[10px] md:text-xs px-10 py-4 font-bold uppercase transition-all duration-300 hover:bg-[#FF2D55] hover:shadow-[0_0_30px_rgba(255,45,85,0.4)]"
             >
