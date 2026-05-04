@@ -5,8 +5,7 @@ import {
   User, 
   signInWithPopup, 
   signOut as firebaseSignOut,
-  onAuthStateChanged,
-  GoogleAuthProvider
+  onAuthStateChanged 
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
@@ -35,14 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
-      
-      // Bóc tách Credential để lấy Access Token của Google dùng cho Calendar
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        localStorage.setItem("google_access_token", credential.accessToken);
-        console.log("Đã lấy được Google Access Token thành công!");
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Lỗi đăng nhập Google:", error);
     } finally {
@@ -53,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      localStorage.removeItem("google_access_token");
     } catch (error) {
       console.error("Lỗi đăng xuất:", error);
     }

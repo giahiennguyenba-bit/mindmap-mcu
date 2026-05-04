@@ -18,6 +18,7 @@ import {
   PhoneOff,
 } from "lucide-react";
 import OrganicSphereWrapper from "@/components/3d/OrganicSphereWrapper";
+import SchedulePanel from "./SchedulePanel";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
@@ -35,8 +36,10 @@ import {
 } from "firebase/firestore";
 
 /* ═══════════════════════════════════════════
-   Types
+   Types & Constants
    ═══════════════════════════════════════════ */
+const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 interface ChatMessage {
   id: string;
   role: "ai" | "user";
@@ -104,9 +107,18 @@ const SIDEBAR_ITEMS = [
   { icon: Settings,        label: "Settings",  id: "settings" },
 ] as const;
 
-function Sidebar({ isVoiceMuted, toggleMute }: { isVoiceMuted: boolean, toggleMute: () => void }) {
+function Sidebar({ 
+  active, 
+  setActive, 
+  isVoiceMuted, 
+  toggleMute 
+}: { 
+  active: string; 
+  setActive: (id: string) => void; 
+  isVoiceMuted: boolean; 
+  toggleMute: () => void; 
+}) {
   const { signOut } = useAuth();
-  const [active, setActive] = useState("dashboard");
 
   return (
     <nav
@@ -173,6 +185,57 @@ function Sidebar({ isVoiceMuted, toggleMute }: { isVoiceMuted: boolean, toggleMu
         </button>
       </div>
     </nav>
+  );
+}
+
+function MobileDock({ 
+  active, 
+  setActive, 
+  isVoiceMuted, 
+  toggleMute 
+}: { 
+  active: string; 
+  setActive: (id: string) => void; 
+  isVoiceMuted: boolean; 
+  toggleMute: () => void; 
+}) {
+  return (
+    <div 
+      className="flex lg:hidden items-center justify-around px-2 py-3 bg-black/60 backdrop-blur-3xl border-t border-white/[0.07] fixed bottom-0 left-0 right-0 z-[60]"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
+    >
+      {SIDEBAR_ITEMS.map(({ icon: Icon, label, id }) => (
+        <button
+          key={id}
+          onClick={() => setActive(id)}
+          aria-label={label}
+          className={`flex flex-col items-center gap-1.5 p-2 transition-all duration-300 ${
+            active === id ? "text-white scale-110" : "text-white/40 hover:text-white/60"
+          }`}
+        >
+          <Icon size={20} strokeWidth={1.5} />
+          <span className="text-[9px] font-bold tracking-wider uppercase">{label}</span>
+          {active === id && (
+            <motion.div 
+              layoutId="mobile-dock-indicator"
+              className="absolute -bottom-1 w-1 h-1 bg-white rounded-full"
+            />
+          )}
+        </button>
+      ))}
+      <button
+        onClick={toggleMute}
+        aria-label="Toggle Voice"
+        className="flex flex-col items-center gap-1.5 p-2 text-white/40 hover:text-white transition-colors"
+      >
+        {isVoiceMuted ? (
+          <VolumeX size={20} strokeWidth={1.5} className="text-[#FF2D55]" />
+        ) : (
+          <Volume2 size={20} strokeWidth={1.5} />
+        )}
+        <span className="text-[9px] font-medium tracking-wide uppercase">{isVoiceMuted ? 'Muted' : 'Voice'}</span>
+      </button>
+    </div>
   );
 }
 
@@ -403,11 +466,11 @@ function ChatPanel({
 
     // Save User message to Firestore
     if (user) {
-      addDoc(collection(db, "users", user.uid, "messages"), {
+      await addDoc(collection(db, "users", user.uid, "messages"), {
         role: "user",
         content: trimmed,
         timestamp: serverTimestamp()
-      });
+      }).catch(err => console.error("Error saving user message:", err));
     }
 
     // AI "thinking" indicator
@@ -429,13 +492,31 @@ function ChatPanel({
           parts: [{ text: m.content }]
         }));
 
+      // Fetch today's schedule
+      let calendarData = [];
+      const currentDayIndex = new Date().getDay();
+      
+      if (user) {
+        const q = query(
+          collection(db, "users", user.uid, "user_schedules"),
+          orderBy("startTime", "asc")
+        );
+        const snapshot = await getDocs(q);
+        calendarData = snapshot.docs
+          .map(d => d.data() as any)
+          .filter(s => s.recurrence?.daysOfWeek?.includes(currentDayIndex));
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           message: trimmed, 
           history,
-          userName: user?.displayName 
+          userName: user?.displayName,
+          calendarData,
+          currentDay: DAYS_OF_WEEK[currentDayIndex],
+          todayIndex: currentDayIndex
         })
       });
       
@@ -443,7 +524,12 @@ function ChatPanel({
       if (data.error) throw new Error(data.error);
 
       // Parse response để bóc tách JSON và clean text
-      const { message: cleanMessage, metadata } = parseMindyResponse(data.text);
+      let rawText = data.text;
+      if (!rawText && data.functionCalls?.length > 0) {
+        rawText = "Initializing neural optimization... I'm adding a Healing Zone to your schedule now. $$$ {\"stressScore\": 0.2, \"energyLevel\": 0.8} $$$";
+      }
+      
+      const { message: cleanMessage, metadata } = parseMindyResponse(rawText);
 
       // Phản hồi đã có, dừng "suy nghĩ"
       setMessages(prev => prev.map(m => m.id === thinkingId ? {
@@ -456,21 +542,58 @@ function ChatPanel({
 
       // Save AI message to Firestore
       if (user) {
-        addDoc(collection(db, "users", user.uid, "messages"), {
+        await addDoc(collection(db, "users", user.uid, "messages"), {
           role: "ai",
           content: cleanMessage,
           timestamp: serverTimestamp()
-        });
+        }).catch(err => console.error("Error saving AI message:", err));
         
         // Update user's last mood/state
-        setDoc(doc(db, "users", user.uid), {
+        await setDoc(doc(db, "users", user.uid), {
           lastSphereState: {
             stressLevel: metadata?.stressScore ?? 0.3,
             energyLevel: metadata?.energyLevel ?? 0.5,
             moodColor: metadata?.sentimentColor ?? "#ffffff"
           },
           updatedAt: serverTimestamp()
-        }, { merge: true });
+        }, { merge: true }).catch(err => console.error("Error updating user state:", err));
+
+        // Handle Function Calls (e.g. add_healing_block)
+        if (data.functionCalls && data.functionCalls.length > 0) {
+          for (const call of data.functionCalls) {
+            if (call.name === "add_healing_block") {
+              const args = call.args;
+              if (args) {
+                console.log("Mindy is executing add_healing_block with args:", args);
+                try {
+                  const day = typeof args.dayOfWeek === 'number' ? args.dayOfWeek : parseInt(args.dayOfWeek);
+                  if (isNaN(day)) throw new Error("Invalid dayOfWeek");
+
+                  await addDoc(collection(db, "users", user.uid, "user_schedules"), {
+                    title: args.title || "Healing Zone",
+                    location: args.location || "",
+                    startTime: args.startTime,
+                    endTime: args.endTime,
+                    type: "healing",
+                    recurrence: {
+                      isRecurring: false,
+                      daysOfWeek: [day]
+                    },
+                    isAIGenerated: true,
+                    ai_note: args.ai_note || "Suggested by Mindy for your well-being.",
+                    status: "pending",
+                    color_logic: "transparent",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                  });
+                  console.log("Mindy successfully inserted a Healing Zone for day:", day);
+                } catch (err) {
+                  console.error("Failed to execute Mindy's tool call:", err);
+                }
+              }
+            }
+          }
+        }
       }
 
       // Mindy Voice Output
@@ -516,8 +639,9 @@ function ChatPanel({
         window.speechSynthesis.speak(utterance);
       }
 
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error("Chat API Error:", err);
       setMessages(prev => prev.map(m => m.id === thinkingId ? {
         ...m,
         content: "Mindy đang bận cập nhật hệ thần kinh, vui lòng kiểm tra lại API Key hoặc kết nối mạng."
@@ -705,36 +829,6 @@ function ChatPanel({
               </button>
             </div>
           </div>
-          
-          {/* Action Dock (Mobile Only) */}
-          <div className="flex lg:hidden items-center justify-around px-2 pb-1">
-            {SIDEBAR_ITEMS.map(({ icon: Icon, label, id }) => (
-              <button
-                key={id}
-                aria-label={label}
-                className="text-white/40 hover:text-white flex flex-col items-center gap-1.5 p-2 transition-colors"
-              >
-                <Icon size={20} strokeWidth={1.5} />
-                <span className="text-[9px] font-medium tracking-wide uppercase">{label}</span>
-              </button>
-            ))}
-            {/* Mute Toggle Mobile */}
-            <button
-              onClick={() => {
-                // @ts-ignore
-                document.getElementById('mute-toggle')?.click();
-              }}
-              aria-label="Toggle Voice"
-              className="text-white/40 hover:text-white flex flex-col items-center gap-1.5 p-2 transition-colors"
-            >
-              {isVoiceMuted ? (
-                <VolumeX size={20} strokeWidth={1.5} className="text-[#FF2D55]" />
-              ) : (
-                <Volume2 size={20} strokeWidth={1.5} />
-              )}
-              <span className="text-[9px] font-medium tracking-wide uppercase">{isVoiceMuted ? 'Muted' : 'Voice'}</span>
-            </button>
-          </div>
         </div>
       </AuroraBackground>
     </div>
@@ -819,6 +913,7 @@ function CorePanel({ isTyping, isSpeaking, stressLevel, energyLevel, moodColor, 
    Dashboard Shell
    ═══════════════════════════════════════════ */
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [isTyping, setIsTyping] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -883,7 +978,12 @@ export default function Dashboard() {
       transition={{ duration: 0.8, ease: "easeOut" }}
     >
       {/* Sidebar */}
-      <Sidebar isVoiceMuted={isVoiceMuted} toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} />
+      <Sidebar 
+        active={activeTab} 
+        setActive={setActiveTab} 
+        isVoiceMuted={isVoiceMuted} 
+        toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
+      />
       {/* Hidden button for mobile dock to trigger mute */}
       <button id="mute-toggle" className="hidden" onClick={() => setIsVoiceMuted(!isVoiceMuted)}></button>
 
@@ -929,24 +1029,36 @@ export default function Dashboard() {
           </AnimatePresence>
         </div>
 
-        {/* Right: Chat */}
-        <div className="flex-1 min-h-0 relative">
-          <ChatPanel 
-            onTypingChange={setIsTyping} 
-            onFocusChange={setIsInputFocused}
-            onSpeakingChange={setIsSpeaking}
-            isVoiceMuted={isVoiceMuted}
-            isCallMode={isCallMode}
-            startCall={startCall}
-            endCall={endCall}
-            onMindyStateUpdate={(meta) => {
-              if (meta.stressScore !== undefined) setStressLevel(meta.stressScore);
-              if (meta.energyLevel !== undefined) setEnergyLevel(meta.energyLevel);
-              if (meta.sentimentColor !== undefined) setMoodColor(meta.sentimentColor);
-            }}
-          />
+        {/* Right: Panel */}
+        <div className="flex-1 min-h-0 relative pb-[80px] lg:pb-0">
+          {activeTab === "schedule" ? (
+            <SchedulePanel />
+          ) : (
+            <ChatPanel 
+              onTypingChange={setIsTyping} 
+              onFocusChange={setIsInputFocused}
+              onSpeakingChange={setIsSpeaking}
+              isVoiceMuted={isVoiceMuted}
+              isCallMode={isCallMode}
+              startCall={startCall}
+              endCall={endCall}
+              onMindyStateUpdate={(meta) => {
+                if (meta.stressScore !== undefined) setStressLevel(meta.stressScore);
+                if (meta.energyLevel !== undefined) setEnergyLevel(meta.energyLevel);
+                if (meta.sentimentColor !== undefined) setMoodColor(meta.sentimentColor);
+              }}
+            />
+          )}
         </div>
       </div>
+
+      {/* Mobile Navigation Dock */}
+      <MobileDock 
+        active={activeTab} 
+        setActive={setActiveTab} 
+        isVoiceMuted={isVoiceMuted} 
+        toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
+      />
     </motion.main>
   );
 }

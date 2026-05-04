@@ -21,13 +21,9 @@ const googleProvider = new GoogleAuthProvider();
 // Initialize Firestore
 const db = getFirestore(app);
 
-// Thêm scope để xin quyền đọc lịch Google Calendar
-googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-
-// Bắt buộc Google hiện lại bảng xin quyền (consent screen) và cấp offline token
+// Optional: Force Google account selection
 googleProvider.setCustomParameters({
-  prompt: 'consent',
-  access_type: 'offline'
+  prompt: 'select_account'
 });
 
 export { app, auth, googleProvider, db };
