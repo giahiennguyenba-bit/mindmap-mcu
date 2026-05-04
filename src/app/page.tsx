@@ -130,97 +130,112 @@ export default function Home() {
   }, [isSphereReady, startListening]);
 
   return (
-    <main className="relative min-h-[100dvh] lg:h-screen bg-[#080808] text-foreground w-full overflow-hidden font-sans selection:bg-primary flex flex-col lg:flex-row selection:text-white">
+    <main className="relative min-h-[100dvh] lg:h-screen bg-[#080808] text-foreground w-full overflow-hidden font-sans selection:bg-primary flex flex-col lg:flex-row selection:text-white" style={{ fontSize: 'clamp(12px, 1.2vw, 16px)' }}>
       
-      {/* LEFT: Typography & Controls */}
-      <section className="flex-1 lg:flex-[0.6] flex flex-col justify-between p-6 md:p-12 lg:p-20 relative z-10 items-start text-left">
+      {/* LEFT / TOP: Typography & Controls */}
+      <section className="flex flex-col relative z-10 lg:flex-1 lg:justify-between lg:items-start lg:text-left items-center text-center" style={{ padding: 'clamp(2rem, 6vw, 5rem)', paddingBottom: '0' }}>
         
         {/* TOP: PROJECT IDENTITY */}
-        <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="z-10 pt-4 lg:pt-0">
-          <h2 className="font-mono text-[10px] md:text-xs tracking-[0.5em] text-white/40 uppercase mb-1">Project</h2>
-          <div className="text-xl md:text-2xl font-bold tracking-[0.2em] uppercase flex items-center gap-3">
+        <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="z-10 w-full flex flex-col items-center lg:items-start">
+          <h2 className="font-mono tracking-[0.5em] text-white/40 uppercase mb-1" style={{ fontSize: 'clamp(8px, 0.9vw, 11px)' }}>Project</h2>
+          <div className="font-bold tracking-[0.2em] uppercase flex items-center gap-3" style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)' }}>
             MINDMAP <span className="text-primary">MCU</span>
           </div>
         </header>
 
         {/* MIDDLE: HEADLINE & CONTENT */}
-        <div className="flex-1 flex flex-col items-start justify-center my-10 lg:my-20">
-          <h1 className="font-heading text-[12vw] md:text-[6rem] lg:text-[7rem] xl:text-[8rem] font-black leading-[1.1] md:leading-[0.9] tracking-tighter uppercase -ml-1 md:-ml-2">
+        <div className="flex flex-col items-center lg:items-start lg:flex-1 lg:justify-center" style={{ margin: 'clamp(1.5rem, 4vw, 5rem) 0' }}>
+          <h1 className="font-heading font-black tracking-tighter uppercase text-center lg:text-left" style={{ fontSize: 'clamp(3.5rem, 12vw, 9rem)', lineHeight: 0.9 }}>
             <div ref={word1Ref} style={{ opacity: 0, transform: 'translateY(20px)' }}>Organic</div>
             <div ref={word2Ref} style={{ opacity: 0, transform: 'translateY(20px)' }} className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D55] via-[#FF6B00] to-[#FF8C00]">
               Intelligence.
             </div>
           </h1>
 
-          <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-8 mb-10 lg:mb-0 max-w-[280px] md:max-w-md lg:max-w-xl">
-            <p className="text-[11px] md:text-base lg:text-lg font-mono text-white/50 leading-relaxed normal-case">
+          <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(1.25rem, 2.5vw, 2rem)' }} className="max-w-xs lg:max-w-none">
+            <p className="font-mono text-white/50 leading-relaxed normal-case" style={{ fontSize: 'clamp(12px, 1.1vw, 16px)' }}>
               {displayText}
               <span className="inline-block w-1.5 h-3 bg-primary ml-1 animate-pulse" />
             </p>
           </div>
 
-          <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="mt-12 lg:mt-24">
+          <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(2rem, 4vw, 6rem)' }}>
             <button
               onClick={user ? () => router.push('/dashboard') : signInWithGoogle}
               disabled={loading}
-              className="border-2 border-[#FF2D55] bg-transparent text-white tracking-[0.3em] text-[10px] md:text-xs px-10 py-4 font-bold uppercase transition-all duration-300 hover:bg-[#FF2D55] hover:shadow-[0_0_30px_rgba(255,45,85,0.4)]"
+              className="border-2 border-[#FF2D55] bg-transparent text-white font-bold uppercase transition-all duration-300 hover:bg-[#FF2D55] hover:shadow-[0_0_30px_rgba(255,45,85,0.4)]"
+              style={{ letterSpacing: '0.3em', fontSize: 'clamp(9px, 0.85vw, 11px)', padding: 'clamp(0.9rem, 1.2vw, 1rem) clamp(2.5rem, 3vw, 2.5rem)' }}
             >
               {loading ? "Connecting..." : "Speak to the core"}
             </button>
           </div>
         </div>
 
-        {/* BOTTOM: Status / Mic */}
-        <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)' }} className="flex items-center gap-6 mt-8">
+        {/* BOTTOM: Status / Mic — Desktop only */}
+        <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)', gap: 'clamp(0.75rem, 1.5vw, 1.5rem)' }} className="hidden lg:flex items-center">
           <Button
             size="lg"
             onClick={isReady ? stopListening : startListening}
             className={cn(
-              "rounded-none w-14 h-14 transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none",
+              "rounded-none transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none flex-shrink-0",
               isReady ? "bg-primary text-white" : "bg-white/10 text-white/40 border border-white/10"
             )}
+            style={{ width: 'clamp(2.5rem, 3.5vw, 3.5rem)', height: 'clamp(2.5rem, 3.5vw, 3.5rem)' }}
           >
-            <Mic className={cn("w-5 h-5", !isReady && "opacity-50")} />
+            <Mic style={{ width: 'clamp(0.8rem, 1.2vw, 1.25rem)', height: 'clamp(0.8rem, 1.2vw, 1.25rem)' }} className={cn(!isReady && "opacity-50")} />
           </Button>
-          <div className="font-mono text-[10px] text-white/30 uppercase tracking-[0.2em] space-y-1">
+          <div className="font-mono text-white/30 uppercase space-y-1" style={{ fontSize: 'clamp(7px, 0.75vw, 10px)', letterSpacing: '0.2em' }}>
             <p>Status: <span className="text-primary">{isReady ? "CORE ACTIVE" : "INTERFACE MUTED"}</span></p>
             <p>Neural Link: <span className={cn(isReady ? "text-[#00FF85]" : "text-white/20")}>Nominal</span></p>
           </div>
         </div>
       </section>
 
-      {/* RIGHT: THE CORE (SPHERE) */}
+      {/* RIGHT / BOTTOM: THE CORE (SPHERE) — mirroring Dashboard's CorePanel pattern */}
       <section 
-        className="flex-1 lg:flex-[0.4] relative flex items-center justify-center min-h-[45dvh] lg:min-h-screen z-0 overflow-visible -mt-10 lg:mt-0"
+        className="lg:flex-1 relative flex items-center justify-center overflow-hidden"
+        style={{ minHeight: 'clamp(320px, 60vw, 100vh)' }}
       >
+        {/* Ambient glow — absolute centered, same as Dashboard */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: "clamp(300px, 70vw, 600px)",
+            height: "clamp(300px, 70vw, 600px)",
+            background: "radial-gradient(circle, rgba(255,45,85,0.15) 0%, transparent 65%)",
+            filter: "blur(60px)",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+
+        {/* Sphere container — centered with mx-auto, responsive size via CSS */}
+        <style>{`
+          .sphere-responsive {
+            width: clamp(260px, 78vw, 680px);
+            height: clamp(260px, 78vw, 680px);
+            left: 2rem;
+          }
+          @media (min-width: 1024px) {
+            .sphere-responsive {
+              width: clamp(280px, 42vw, 680px);
+              height: clamp(280px, 42vw, 680px);
+              left: 0;
+            }
+          }
+        `}</style>
         <div 
           ref={sphereRef}
-          style={{ 
-            opacity: 0, 
-            scale: 0.8,
-            width: "clamp(330px, 46vw, 750px)",
-            height: "clamp(330px, 46vw, 750px)"
-          }}
-          className="relative aspect-square flex items-center justify-center"
+          className="sphere-responsive relative z-10 aspect-square mx-auto flex-shrink-0"
+          style={{ opacity: 0, scale: 0.8 }}
         >
-          {/* Ambient Glow */}
-          <div className="absolute inset-0 rounded-full opacity-20 blur-3xl animate-[pulseGlow_5s_ease-in-out_infinite]"
-               style={{ background: 'radial-gradient(circle, #FF2D55 0%, transparent 70%)' }} />
-          
-          {/* 3D Canvas Layer */}
-          <div className="absolute inset-0 z-10 pointer-events-auto cursor-default">
-            <OrganicSphereWrapper 
-              isListening={isReady} 
-              audioLevels={updateLevels} 
-              colorMode="vibrant" 
-              onReady={() => setIsSphereReady(true)}
-            />
-          </div>
-
-          {/* Decoration Layer */}
-          <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
-            <div className="scanlines-radial absolute inset-0 opacity-10" />
-          </div>
+          <OrganicSphereWrapper 
+            isListening={isReady} 
+            audioLevels={updateLevels} 
+            colorMode="vibrant" 
+            onReady={() => setIsSphereReady(true)}
+          />
         </div>
       </section>
 
