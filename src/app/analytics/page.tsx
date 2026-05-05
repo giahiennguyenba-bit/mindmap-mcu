@@ -451,7 +451,7 @@ export default function NeuralAnalyticsPage() {
                           fill="#FFFFFF" 
                           stroke="#000" 
                           strokeWidth={2}
-                          isFront={true}
+
                         />
                       );
                     })}
