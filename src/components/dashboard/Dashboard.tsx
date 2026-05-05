@@ -913,6 +913,7 @@ function CorePanel({ isTyping, isSpeaking, stressLevel, energyLevel, moodColor, 
    Dashboard Shell
    ═══════════════════════════════════════════ */
 export default function Dashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isTyping, setIsTyping] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -980,7 +981,13 @@ export default function Dashboard() {
       {/* Sidebar */}
       <Sidebar 
         active={activeTab} 
-        setActive={setActiveTab} 
+        setActive={(id) => {
+          if (id === 'analytics') {
+            router.push('/analytics');
+          } else {
+            setActiveTab(id);
+          }
+        }} 
         isVoiceMuted={isVoiceMuted} 
         toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
       />
@@ -1055,7 +1062,13 @@ export default function Dashboard() {
       {/* Mobile Navigation Dock */}
       <MobileDock 
         active={activeTab} 
-        setActive={setActiveTab} 
+        setActive={(id) => {
+          if (id === 'analytics') {
+            router.push('/analytics');
+          } else {
+            setActiveTab(id);
+          }
+        }} 
         isVoiceMuted={isVoiceMuted} 
         toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
       />
