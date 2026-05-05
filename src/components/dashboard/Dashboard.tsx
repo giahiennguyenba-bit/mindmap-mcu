@@ -558,6 +558,17 @@ function ChatPanel({
           updatedAt: serverTimestamp()
         }, { merge: true }).catch(err => console.error("Error updating user state:", err));
 
+        // Create an entry in global emotional_logs for Analytics tracking
+        if (metadata?.stressScore !== undefined) {
+          await addDoc(collection(db, "emotional_logs"), {
+            userId: user.uid,
+            stressScore: metadata.stressScore,
+            context: trimmed, 
+            timestamp: serverTimestamp()
+          }).catch(err => console.error("Error saving emotional log:", err));
+          console.log("Successfully logged emotional state for analytics:", metadata.stressScore);
+        }
+
         // Handle Function Calls (e.g. add_healing_block)
         if (data.functionCalls && data.functionCalls.length > 0) {
           for (const call of data.functionCalls) {
