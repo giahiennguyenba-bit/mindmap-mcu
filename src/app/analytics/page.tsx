@@ -387,7 +387,7 @@ export default function NeuralAnalyticsPage() {
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart 
-                    data={timeframe === 'daily' ? emotionalLogs : weeklyLogs} 
+                    data={(timeframe === 'daily' ? emotionalLogs : weeklyLogs) as any[]} 
                     margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
                   >
                     <defs>
