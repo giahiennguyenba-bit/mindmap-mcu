@@ -105,7 +105,6 @@ const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
   { icon: Calendar,        label: "Schedule",  id: "schedule" },
   { icon: LineChart,       label: "Analytics", id: "analytics" },
-  { icon: Settings,        label: "Settings",  id: "settings" },
 ] as const;
 
 function Sidebar({ 
@@ -159,20 +158,6 @@ function Sidebar({
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-4 w-full">
-        <button
-          onClick={toggleMute}
-          aria-label={isVoiceMuted ? "Unmute Voice" : "Mute Voice"}
-          className="group relative flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer hover:bg-white/[0.06] transition-all duration-300"
-        >
-          {isVoiceMuted ? (
-            <VolumeX size={20} strokeWidth={1.5} className="text-[#A0A0A0] group-hover:text-white transition-colors duration-300" />
-          ) : (
-            <Volume2 size={20} strokeWidth={1.5} className="text-[#A0A0A0] group-hover:text-white transition-colors duration-300" />
-          )}
-        </button>
-
-        {/* Logout */}
         <button
           onClick={signOut}
           aria-label="Log out"
@@ -184,7 +169,6 @@ function Sidebar({
             className="text-[#A0A0A0] group-hover:text-white transition-colors duration-300"
           />
         </button>
-      </div>
     </nav>
   );
 }
@@ -196,12 +180,19 @@ function MobileDock({
   active: string; 
   setActive: (id: string) => void; 
 }) {
+  const { signOut } = useAuth();
+  const MOBILE_NAV = [
+    { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
+    { icon: Calendar,        label: "Schedule",  id: "schedule" },
+    { icon: LineChart,       label: "Analytics", id: "analytics" },
+  ] as const;
+
   return (
     <div 
       className="flex lg:hidden items-center justify-around px-2 py-3 bg-black/60 backdrop-blur-3xl border-t border-white/[0.07] fixed bottom-0 left-0 right-0 z-[60]"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
     >
-      {SIDEBAR_ITEMS.map(({ icon: Icon, label, id }) => (
+      {MOBILE_NAV.map(({ icon: Icon, label, id }) => (
         <button
           key={id}
           onClick={() => setActive(id)}
@@ -220,6 +211,15 @@ function MobileDock({
           )}
         </button>
       ))}
+      {/* Logout button */}
+      <button
+        onClick={signOut}
+        aria-label="Log out"
+        className="flex flex-col items-center gap-1.5 p-2 text-white/40 hover:text-white/60 transition-all duration-300"
+      >
+        <LogOut size={20} strokeWidth={1.5} />
+        <span className="text-[9px] font-bold tracking-wider uppercase">Logout</span>
+      </button>
     </div>
   );
 }
@@ -589,10 +589,15 @@ function ChatPanel({
 
         // Create an entry in global emotional_logs for Analytics tracking
         if (metadata?.stressScore !== undefined) {
+          // Extract a meaningful short context label (first 6 words of user message)
+          const contextLabel = trimmed.split(' ').slice(0, 6).join(' ') + (trimmed.split(' ').length > 6 ? '...' : '');
+          
           await addDoc(collection(db, "emotional_logs"), {
             userId: user.uid,
             stressScore: metadata.stressScore,
-            context: trimmed, 
+            energyLevel: metadata.energyLevel ?? 0.5,
+            sentimentColor: metadata.sentimentColor ?? "#ffffff",
+            context: contextLabel,
             timestamp: serverTimestamp()
           }).catch(err => console.error("Error saving emotional log:", err));
           console.log("Successfully logged emotional state for analytics:", metadata.stressScore);
@@ -959,7 +964,7 @@ export default function Dashboard() {
   const [isTyping, setIsTyping] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(true); // Default: muted on login
   const [stressLevel, setStressLevel] = useState(0.3);
   const [energyLevel, setEnergyLevel] = useState(0.3);
   const [moodColor, setMoodColor] = useState("#ffffff");
@@ -1030,10 +1035,19 @@ export default function Dashboard() {
           }
         }} 
         isVoiceMuted={isVoiceMuted} 
-        toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
+        toggleMute={() => {
+          const newMuted = !isVoiceMuted;
+          setIsVoiceMuted(newMuted);
+          // Immediately kill any ongoing speech when muting
+          if (newMuted) window.speechSynthesis.cancel();
+        }}
       />
       {/* Hidden button for mobile dock to trigger mute */}
-      <button id="mute-toggle" className="hidden" onClick={() => setIsVoiceMuted(!isVoiceMuted)}></button>
+      <button id="mute-toggle" className="hidden" onClick={() => {
+        const newMuted = !isVoiceMuted;
+        setIsVoiceMuted(newMuted);
+        if (newMuted) window.speechSynthesis.cancel();
+      }}></button>
 
       {/* Main Grid: 50/50 split on desktop, stacked on mobile */}
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden w-full">

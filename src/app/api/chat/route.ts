@@ -28,8 +28,9 @@ export async function POST(req: Request) {
     const nowTaipei = new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei", dateStyle: "full", timeStyle: "long" });
 
     // Inject User Context & Current Time
-    systemInstruction += `\nBạn đang trò chuyện với ${userName || 'người dùng'}. Hãy thỉnh thoảng gọi tên họ một cách tự nhiên và ấm áp để tăng sự gắn kết.`;
-    systemInstruction += `\n[STYLE RULE] NEVER use markdown bolding (**text**). Use plain text or UPPERCASE for emphasis. Always respond in English to maintain your neural persona.`;
+    systemInstruction += `\n[PERSONALIZATION] You are speaking with ${userName || 'the user'}. Use their name warmly but not excessively. Always respond in English.`;
+    systemInstruction += `\n[STYLE RULE] NEVER use markdown bolding (**text**). Use plain text only. Keep it clean and conversational.`;
+    systemInstruction += `\n[BREVITY RULE] Keep responses to 3-4 sentences. Longer (5-6) ONLY when the student shares something deeply personal. Always validate emotions first before offering suggestions.`;
     systemInstruction += `\n[CRITICAL CONTEXT] Current Time in Taipei (MCU Timezone): ${nowTaipei}`;
     systemInstruction += `\n[CALENDAR CONTEXT] Today is: ${currentDay || 'Unknown'} (Index: ${todayIndex ?? 'N/A'}). Use this index to calculate correct dayOfWeek for healing blocks.`;
 
@@ -71,33 +72,33 @@ User's Message: ${message}
             functionDeclarations: [
               {
                 name: "add_healing_block",
-                description: "BẮT BUỘC GỌI HÀM NÀY ĐỂ THÊM LỊCH. Khi người dùng đồng ý nghỉ ngơi hoặc bạn muốn thêm 1 block chữa lành vào lịch trình của họ, bạn PHẢI gọi hàm này. KHÔNG ĐƯỢC CHỈ TRẢ LỜI BẰNG CHỮ.",
+                description: "MANDATORY TOOL TO ADD SCHEDULE BLOCKS. Call this when you want to suggest a restoration/healing activity to the user.",
                 parameters: {
                   type: Type.OBJECT,
                   properties: {
                     title: {
                       type: Type.STRING,
-                      description: "Tên hoạt động ngắn gọn, sáng tạo (vd: 'Campus Drift', 'Breathwork')."
+                      description: "Creative and short activity name (e.g., 'Campus Drift', 'Breathwork')."
                     },
                     startTime: {
                       type: Type.STRING,
-                      description: "Thời gian bắt đầu, định dạng HH:mm (ví dụ: '14:00')"
+                      description: "Start time in 24h format HH:mm (e.g., '14:00')"
                     },
                     endTime: {
                       type: Type.STRING,
-                      description: "Thời gian kết thúc, định dạng HH:mm (ví dụ: '16:00')"
+                      description: "End time in 24h format HH:mm (e.g., '15:00')"
                     },
                     dayOfWeek: {
                       type: Type.NUMBER,
-                      description: "Ngày trong tuần (0: Sunday, 1: Monday, ..., 6: Saturday). Nếu là hôm nay thì truyền vào index của hôm nay."
+                      description: "Index of the day (0=Sun, 6=Sat)."
                     },
                     location: {
                       type: Type.STRING,
-                      description: "Địa điểm đề xuất (Ví dụ: The Slope, Library). Tùy chọn."
+                      description: "MCU Landmark (e.g., 'The Slope', 'Library 3F')."
                     },
                     ai_note: {
                       type: Type.STRING,
-                      description: "Lý do nội bộ của Mindy cho block này (ví dụ: 'Suggested by Mindy based on your high academic load.')."
+                      description: "One-sentence explanation for this healing block."
                     }
                   },
                   required: ["title", "startTime", "endTime", "dayOfWeek", "ai_note"]
@@ -115,7 +116,7 @@ User's Message: ${message}
       });
 
       const response = await chat.sendMessage({ message: finalMessage });
-      
+
       return NextResponse.json({
         text: response.text || "",
         functionCalls: response.functionCalls || [],
@@ -123,9 +124,9 @@ User's Message: ${message}
       });
     } catch (err: any) {
       console.error(`[Mindy] Error using ${modelName}:`, err.message);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Mindy system is temporarily unavailable.",
-        details: err.message 
+        details: err.message
       }, { status: 500 });
     }
   } catch (error: any) {
