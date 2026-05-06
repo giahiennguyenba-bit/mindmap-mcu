@@ -254,10 +254,24 @@ export default function NeuralAnalyticsPage() {
         setHeatmapData(newHeatmap);
 
         // 4. Fetch Schedules for Balance Index
-        const schedRef = collection(db, "user_schedules");
-        const schedQuery = query(schedRef, where("userId", "==", user.uid));
+        const schedRef = collection(db, "users", user.uid, "user_schedules");
+        const schedQuery = query(schedRef);
         const schedSnapshot = await getDocs(schedQuery);
-        setSchedules(schedSnapshot.docs.map(doc => doc.data()) as Schedule[]);
+        const rawSchedules = schedSnapshot.docs.map(doc => doc.data()) as any[];
+        
+        // Helper to calculate hours from HH:mm
+        const calculateHours = (start: string, end: string) => {
+          const [sh, sm] = start.split(':').map(Number);
+          const [eh, em] = end.split(':').map(Number);
+          return (eh + em/60) - (sh + sm/60);
+        };
+
+        const formattedSchedules = rawSchedules.map(s => ({
+          ...s,
+          durationHours: calculateHours(s.startTime, s.endTime)
+        }));
+
+        setSchedules(formattedSchedules as Schedule[]);
 
         // 5. Extract Unique Tags
         const allTags = Array.from(new Set(rawWeeklyLogs.map(l => l.context).filter(Boolean)));
@@ -277,8 +291,9 @@ export default function NeuralAnalyticsPage() {
     let acad = 0;
     let rest = 0;
     schedules.forEach(s => {
-      if (s.type === 'academic') acad += s.durationHours || 0;
-      if (s.type === 'restoration') rest += s.durationHours || 0;
+      const hours = s.durationHours || 0;
+      if (s.type === 'academic' || s.type === 'class' || s.type === 'study') acad += hours;
+      if (s.type === 'restoration' || s.type === 'rest' || s.type === 'healing') rest += hours;
     });
     return { totalAcademic: acad, totalRestoration: rest };
   }, [schedules]);
@@ -315,7 +330,15 @@ export default function NeuralAnalyticsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black font-sans pb-40 overflow-y-auto overflow-x-hidden">
+    <main className="h-[100dvh] w-full bg-[#050505] text-white selection:bg-white selection:text-black font-sans pb-40 overflow-y-auto overflow-x-hidden">
+      {/* Force scroll capability even if parent is locked */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        html, body { 
+          overflow: auto !important; 
+          height: auto !important; 
+          position: relative !important;
+        }
+      `}} />
       {/* Subtle Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.02] mix-blend-overlay">
         <svg width="100%" height="100%">
@@ -384,12 +407,17 @@ export default function NeuralAnalyticsPage() {
                 </div>
               </div>
               
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart 
-                    data={(timeframe === 'daily' ? emotionalLogs : weeklyLogs) as any[]} 
-                    margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
-                  >
+              <div className="h-[350px] w-full relative">
+                {(timeframe === 'daily' ? emotionalLogs : weeklyLogs).length === 0 ? (
+                  <div className="absolute inset-0 flex items-center justify-center border border-white/5 bg-white/[0.02] rounded-xl">
+                    <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.2em]">Neural data pending...</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <AreaChart 
+                      data={(timeframe === 'daily' ? emotionalLogs : weeklyLogs) as any[]} 
+                      margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                    >
                     <defs>
                       <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#FFFFFF" stopOpacity={0.1} />
@@ -451,12 +479,12 @@ export default function NeuralAnalyticsPage() {
                           fill="#FFFFFF" 
                           stroke="#000" 
                           strokeWidth={2}
-
                         />
                       );
                     })}
                   </AreaChart>
                 </ResponsiveContainer>
+                )}
               </div>
             </motion.div>
 

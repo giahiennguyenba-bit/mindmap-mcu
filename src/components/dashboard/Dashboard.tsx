@@ -32,7 +32,8 @@ import {
   query, 
   orderBy, 
   limit, 
-  getDocs 
+  getDocs,
+  onSnapshot 
 } from "firebase/firestore";
 
 /* ═══════════════════════════════════════════
@@ -190,14 +191,10 @@ function Sidebar({
 
 function MobileDock({ 
   active, 
-  setActive, 
-  isVoiceMuted, 
-  toggleMute 
+  setActive 
 }: { 
   active: string; 
   setActive: (id: string) => void; 
-  isVoiceMuted: boolean; 
-  toggleMute: () => void; 
 }) {
   return (
     <div 
@@ -223,18 +220,6 @@ function MobileDock({
           )}
         </button>
       ))}
-      <button
-        onClick={toggleMute}
-        aria-label="Toggle Voice"
-        className="flex flex-col items-center gap-1.5 p-2 text-white/40 hover:text-white transition-colors"
-      >
-        {isVoiceMuted ? (
-          <VolumeX size={20} strokeWidth={1.5} className="text-[#FF2D55]" />
-        ) : (
-          <Volume2 size={20} strokeWidth={1.5} />
-        )}
-        <span className="text-[9px] font-medium tracking-wide uppercase">{isVoiceMuted ? 'Muted' : 'Voice'}</span>
-      </button>
     </div>
   );
 }
@@ -262,6 +247,7 @@ interface ChatPanelProps {
   onMindyStateUpdate: (state: MindyMetadata) => void;
   onSpeakingChange: (speaking: boolean) => void;
   isVoiceMuted: boolean;
+  toggleMute: () => void;
   isCallMode: boolean;
   startCall: () => void;
   endCall: () => void;
@@ -273,6 +259,7 @@ function ChatPanel({
   onMindyStateUpdate, 
   onSpeakingChange, 
   isVoiceMuted,
+  toggleMute,
   isCallMode,
   startCall,
   endCall,
@@ -294,40 +281,67 @@ function ChatPanel({
     }
   }, [user, loading, router]);
 
-  // Fetch initial profile/mood from Firestore
+  // 1. Theo dõi tin nhắn Real-time từ Firestore
   useEffect(() => {
-    const fetchProfile = async () => {
+    if (!user) {
+      setMessages(WELCOME_MESSAGES);
+      return;
+    }
+
+    console.log("[Mindy] Setting up real-time listener for UID:", user.uid);
+    
+    const q = query(
+      collection(db, "users", user.uid, "messages"),
+      orderBy("timestamp", "asc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log("[Mindy] Snapshot received, size:", snapshot.size);
+      
+      if (snapshot.empty) {
+        console.log("[Mindy] No history found in Firestore, showing welcome messages.");
+        setMessages(WELCOME_MESSAGES);
+      } else {
+        const history: ChatMessage[] = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            role: data.role,
+            content: data.content,
+            timestamp: data.timestamp?.toDate() || new Date()
+          };
+        });
+        setMessages(history);
+      }
+    }, (error) => {
+      console.error("[Mindy] Snapshot error:", error);
+      setMessages(WELCOME_MESSAGES);
+    });
+
+    return () => {
+      console.log("[Mindy] Unsubscribing from messages.");
+      unsubscribe();
+    };
+  }, [user]);
+
+  // 2. Tải Profile thông tin người dùng
+  useEffect(() => {
+    const fetchUserProfile = async () => {
       if (!user) return;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
-          const data = userDoc.data();
-          if (data.lastSphereState) {
-            onMindyStateUpdate(data.lastSphereState);
-          }
-          // Optionally load last few messages
-          const q = query(
-            collection(db, "users", user.uid, "messages"),
-            orderBy("timestamp", "asc"),
-            limit(50)
-          );
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const history = querySnapshot.docs.map(d => ({
-              id: d.id,
-              ...d.data(),
-              timestamp: d.data().timestamp?.toDate() || new Date()
-            })) as ChatMessage[];
-            setMessages(history);
+          const userData = userDoc.data();
+          if (userData.lastSphereState) {
+            onMindyStateUpdate(userData.lastSphereState);
           }
         }
       } catch (err) {
-        console.error("Error fetching profile/history:", err);
+        console.error("[Mindy] Error fetching user profile:", err);
       }
     };
-
-    fetchProfile();
-  }, [user]);
+    fetchUserProfile();
+  }, [user, onMindyStateUpdate]);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -466,11 +480,23 @@ function ChatPanel({
 
     // Save User message to Firestore
     if (user) {
+      console.log("[Mindy] Attempting to save user message for UID:", user.uid);
       await addDoc(collection(db, "users", user.uid, "messages"), {
         role: "user",
         content: trimmed,
         timestamp: serverTimestamp()
-      }).catch(err => console.error("Error saving user message:", err));
+      })
+      .then(() => console.log("[Mindy] User message saved successfully."))
+      .catch(err => {
+        console.error("Error saving user message:", err);
+        // Hiển thị lỗi trực tiếp lên tin nhắn để user biết
+        setMessages(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          role: "ai",
+          content: "⚠️ Error: Your message could not be saved to the neural archive. Please check your connection.",
+          timestamp: new Date()
+        }]);
+      });
     }
 
     // AI "thinking" indicator
@@ -542,11 +568,14 @@ function ChatPanel({
 
       // Save AI message to Firestore
       if (user) {
+        console.log("[Mindy] Saving AI response to Firestore...");
         await addDoc(collection(db, "users", user.uid, "messages"), {
           role: "ai",
           content: cleanMessage,
           timestamp: serverTimestamp()
-        }).catch(err => console.error("Error saving AI message:", err));
+        })
+        .then(() => console.log("[Mindy] AI response saved successfully."))
+        .catch(err => console.error("Error saving AI message:", err));
         
         // Update user's last mood/state
         await setDoc(doc(db, "users", user.uid), {
@@ -658,7 +687,7 @@ function ChatPanel({
         content: "Mindy đang bận cập nhật hệ thần kinh, vui lòng kiểm tra lại API Key hoặc kết nối mạng."
       } : m));
     }
-  }, [input, messages, onTypingChange, onMindyStateUpdate, user]);
+  }, [input, messages, onTypingChange, onMindyStateUpdate, user, isVoiceMuted]);
 
   useEffect(() => {
     sendMessageRef.current = sendMessage;
@@ -723,10 +752,11 @@ function ChatPanel({
               <Phone size={18} strokeWidth={1.5} />
             </button>
             <button
-              aria-label="More options"
+              onClick={toggleMute}
+              aria-label={isVoiceMuted ? "Unmute Voice" : "Mute Voice"}
               className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-2 hover:bg-white/[0.06] rounded-full"
             >
-              <MoreVertical size={18} strokeWidth={1.5} />
+              {isVoiceMuted ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
             </button>
           </div>
         </header>
@@ -1057,6 +1087,7 @@ export default function Dashboard() {
               onFocusChange={setIsInputFocused}
               onSpeakingChange={setIsSpeaking}
               isVoiceMuted={isVoiceMuted}
+              toggleMute={() => setIsVoiceMuted(!isVoiceMuted)}
               isCallMode={isCallMode}
               startCall={startCall}
               endCall={endCall}
@@ -1080,8 +1111,6 @@ export default function Dashboard() {
             setActiveTab(id);
           }
         }} 
-        isVoiceMuted={isVoiceMuted} 
-        toggleMute={() => setIsVoiceMuted(!isVoiceMuted)} 
       />
     </motion.main>
   );
