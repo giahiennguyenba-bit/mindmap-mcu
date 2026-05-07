@@ -119,9 +119,9 @@ const MoodSummary = ({ logs }: { logs: EmotionalLog[] }) => {
             <span className="text-sm text-white/80 font-mono">{getMoodLabel(latest.stressScore)}</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-white/30">
-            {trend > 0.1 ? <TrendingUp size={12} className="text-white/40" /> 
-             : trend < -0.1 ? <TrendingDown size={12} className="text-white/40" /> 
-             : <Minus size={12} className="text-white/20" />}
+            {trend > 0.1 ? <TrendingUp size={12} className="text-white/40" />
+              : trend < -0.1 ? <TrendingDown size={12} className="text-white/40" />
+                : <Minus size={12} className="text-white/20" />}
             <span>{trend > 0.1 ? "Rising" : trend < -0.1 ? "Easing" : "Steady"}</span>
           </div>
         </div>
@@ -459,21 +459,18 @@ export default function AnalyticsPage() {
               "I'm here whenever you're ready. Start a conversation with me and I'll begin tracking how you're feeling throughout the day."
             ) : timeframe === 'daily' ? (
               peakStress
-                ? `Your stress peaked around ${peakStress.time} — "${peakStress.context}". ${
-                    peakStress.stressScore > 0.6
-                      ? "That's a notable spike. Be gentle with yourself right now."
-                      : "Nothing too extreme, but worth checking in with yourself."
-                  }`
+                ? `Your stress peaked around ${peakStress.time} — "${peakStress.context}". ${peakStress.stressScore > 0.6
+                  ? "That's a notable spike. Be gentle with yourself right now."
+                  : "Nothing too extreme, but worth checking in with yourself."
+                }`
                 : "Your day seems emotionally stable so far. Keep it up."
             ) : (
-              `This week your average stress was ${(weeklyOverview.avgStress * 100).toFixed(0)}%. ${
-                weeklyOverview.busiestDay
-                  ? `${weeklyOverview.busiestDay.day} was the toughest day.`
-                  : ''
-              } ${
-                weeklyOverview.avgStress > 0.6
-                  ? "Consider giving yourself more recovery time."
-                  : "Your balance is looking reasonable."
+              `This week your average stress was ${(weeklyOverview.avgStress * 100).toFixed(0)}%. ${weeklyOverview.busiestDay
+                ? `${weeklyOverview.busiestDay.day} was the toughest day.`
+                : ''
+              } ${weeklyOverview.avgStress > 0.6
+                ? "Consider giving yourself more recovery time."
+                : "Your balance is looking reasonable."
               }`
             )}
           </p>

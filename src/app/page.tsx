@@ -136,7 +136,7 @@ export default function Home() {
   // ── Auto-start Microphone Reactivity ──
   useEffect(() => {
     if (!isSphereReady) return;
-    // Start listening automatically after 1.2 seconds from sphere readiness
+    // Start listening automatically after 0.5 seconds from sphere readiness
     const timer = setTimeout(() => {
       startListening();
     }, 500);
@@ -146,13 +146,22 @@ export default function Home() {
   return (
     <div className="bg-[#080808] text-white font-sans overflow-x-hidden">
       {/* ═══ HERO ═══ */}
-      <main className="relative min-h-[100dvh] lg:h-screen w-full overflow-hidden flex flex-col lg:flex-row selection:bg-primary selection:text-white" style={{ fontSize: 'clamp(12px, 1.2vw, 16px)' }}>
+      <main className="relative min-h-[100dvh] xl:h-screen w-full overflow-hidden flex flex-col xl:flex-row selection:bg-primary selection:text-white" style={{ fontSize: 'clamp(12px, 1.2vw, 16px)' }}>
+        <style>{`
+          /* Large tablet / small desktop: iPad Pro 1366px and similar */
+          @media (min-width: 1280px) and (max-width: 1536px) {
+            .hero-headline-text { font-size: clamp(2rem, 5.5vw, 4.8rem) !important; }
+            .hero-left-xl { padding: clamp(1.5rem, 3.5vw, 3.5rem) !important; padding-bottom: clamp(1.5rem, 3vw, 3rem) !important; }
+            .hero-middle-xl { margin-top: clamp(1rem, 2vw, 2.5rem) !important; margin-bottom: clamp(1rem, 2vw, 2rem) !important; }
+            .hero-cta-xl { margin-top: clamp(1.25rem, 2.5vw, 2.5rem) !important; }
+          }
+        `}</style>
 
         {/* LEFT / TOP: Typography & Controls */}
-        <section className="flex flex-col relative z-10 lg:flex-1 lg:justify-between lg:items-start lg:text-left items-center text-center" style={{ padding: 'clamp(2rem, 6vw, 5rem)', paddingBottom: 'clamp(2rem, 5vw, 5rem)' }}>
+        <section className="hero-left-xl flex flex-col relative z-10 xl:flex-1 xl:justify-between xl:items-start xl:text-left items-center text-center" style={{ padding: 'clamp(2rem, 6vw, 5rem)', paddingBottom: 'clamp(2rem, 5vw, 5rem)' }}>
 
           {/* TOP: PROJECT IDENTITY */}
-          <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="z-10 w-full flex flex-col items-center lg:items-start">
+          <header ref={headerRef} style={{ opacity: 0, transform: 'translateY(-20px)' }} className="z-10 w-full flex flex-col items-center xl:items-start">
             <h2 className="font-mono tracking-[0.5em] text-white/40 uppercase mb-1" style={{ fontSize: 'clamp(8px, 0.9vw, 11px)' }}>Project</h2>
             <div className="font-bold tracking-[0.2em] uppercase flex items-baseline gap-3" style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)' }}>
               <span>MINDMAP</span> <span className="text-primary">MCU</span>
@@ -160,22 +169,22 @@ export default function Home() {
           </header>
 
           {/* MIDDLE: HEADLINE & CONTENT */}
-          <div className="flex flex-col items-center lg:items-start lg:flex-1 lg:justify-center" style={{ margin: 'clamp(1.5rem, 4vw, 5rem) 0' }}>
-            <h1 className="font-heading font-black tracking-tighter uppercase text-center lg:text-left" style={{ fontSize: 'clamp(3.5rem, 12vw, 9rem)', lineHeight: 0.9 }}>
+          <div className="hero-middle-xl flex flex-col items-center xl:items-start xl:flex-1 xl:justify-center" style={{ margin: 'clamp(1.5rem, 4vw, 5rem) 0' }}>
+            <h1 className="hero-headline-text font-heading font-black tracking-tighter uppercase text-center xl:text-left" style={{ fontSize: 'clamp(3rem, 10vw, 9rem)', lineHeight: 0.9 }}>
               <div ref={word1Ref} style={{ opacity: 0, transform: 'translateY(20px)' }}>Organic</div>
               <div ref={word2Ref} style={{ opacity: 0, transform: 'translateY(20px)' }} className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D55] via-[#FF6B00] to-[#FF8C00]">
                 Intelligence.
               </div>
             </h1>
 
-            <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(1.25rem, 2.5vw, 2rem)' }} className="max-w-xs lg:max-w-none">
+            <div ref={taglineRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(1.25rem, 2.5vw, 2rem)' }} className="max-w-xs xl:max-w-none">
               <p className="font-mono text-white/50 leading-relaxed normal-case" style={{ fontSize: 'clamp(12px, 1.1vw, 16px)' }}>
                 {displayText}
                 <span className="inline-block w-1.5 h-3 bg-primary ml-1 animate-pulse" />
               </p>
             </div>
 
-            <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(2rem, 4vw, 6rem)' }}>
+            <div ref={ctaRef} style={{ opacity: 0, transform: 'translateY(20px)', marginTop: 'clamp(2rem, 4vw, 6rem)' }} className="hero-cta-xl">
               <button
                 onClick={user ? () => router.push('/dashboard') : signInWithGoogle}
                 disabled={loading}
@@ -188,7 +197,7 @@ export default function Home() {
           </div>
 
           {/* BOTTOM: Status / Mic — Desktop only */}
-          <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)', gap: 'clamp(0.75rem, 1.5vw, 1.5rem)' }} className="hidden lg:flex items-center">
+          <div ref={statusRef} style={{ opacity: 0, transform: 'translateY(20px)', gap: 'clamp(0.75rem, 1.5vw, 1.5rem)' }} className="hidden xl:flex items-center">
             <Button
               size="lg"
               onClick={isReady ? stopListening : startListening}
@@ -209,8 +218,8 @@ export default function Home() {
 
         {/* RIGHT / BOTTOM: THE CORE (SPHERE) */}
         <section
-          className="lg:flex-1 relative flex items-center justify-center overflow-hidden"
-          style={{ minHeight: 'clamp(280px, 45vw, 100vh)' }}
+          className="xl:flex-1 relative flex items-center justify-center overflow-hidden"
+          style={{ minHeight: 'clamp(300px, 50vh, 100vh)' }}
         >
           <div
             className="absolute pointer-events-none"
@@ -227,19 +236,28 @@ export default function Home() {
 
           <style>{`
           .sphere-responsive {
-            width: clamp(260px, 78vw, 680px);
-            height: clamp(260px, 78vw, 680px);
+            width: clamp(260px, 70vw, 560px);
+            height: clamp(260px, 70vw, 560px);
           }
-          @media (min-width: 1024px) {
+          @media (min-width: 768px) and (max-width: 1279px) {
             .sphere-responsive {
-              width: clamp(280px, 42vw, 680px);
-              height: clamp(280px, 42vw, 680px);
+              width: clamp(260px, 55vw, 480px);
+              height: clamp(260px, 55vw, 480px);
+            }
+          }
+          @media (min-width: 1280px) {
+            .sphere-responsive {
+              width: clamp(300px, 42vw, 680px);
+              height: clamp(300px, 42vw, 680px);
+            }
+            .sphere-wrapper {
+              transform: translateX(0px) !important;
             }
           }
         `}</style>
           <div
             ref={sphereRef}
-            className="sphere-responsive relative z-10 aspect-square mx-auto flex-shrink-0"
+            className="sphere-wrapper sphere-responsive relative z-10 aspect-square mx-auto flex-shrink-0"
             style={{
               opacity: 0,
               scale: 0.8,
